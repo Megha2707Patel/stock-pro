@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>StockPro — Home</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- NAV -->
+  <header class="nav">
+    <div class="bar">
+      <a class="brand" href="./index.html">StockPro</a>
+      <nav class="nav-links">
+        <a href="./index.html" aria-current="page">Home</a>
+        <a href="./ai.html">AI</a>
+        <a id="authLink" href="./auth.html">Login / Sign up</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- PAGE -->
+  <main class="shell">
+    <!-- Search -->
+    <section class="card">
+      <div class="section">
+        <form id="searchForm" class="form-row" autocomplete="off">
+          <input id="query" class="input" placeholder="Search symbol (e.g., AAPL)" />
+          <button class="btn" type="submit">Search</button>
+        </form>
+        <p class="note">Type a symbol or company name and click Search.</p>
+      </div>
+
+      <div class="section">
+        <div id="results" class="results-grid"></div>
+      </div>
+    </section>
+
+    <!-- Chart -->
+    <section class="card mt-16">
+      <div class="section">
+        <p id="chartTitle" class="subtle">Select a symbol to load chart</p>
+      </div>
+      <div class="section chart-wrap">
+        <canvas id="chart" class="chart-canvas"></canvas>
+      </div>
+    </section>
+
+    <!-- Health (debug; remove if you want) -->
+    <div class="debug mt-16">API: <span id="health">…</span></div>
+  </main>
+
+  <script>
+    const $ = (s, p=document)=>p.querySelector(s);
+    const resultsEl = $('#results');
+    const queryEl   = $('#query');
+    const chartEl   = $('#chart');
+    const chartTitle= $('#chartTitle');
+    const healthEl  = $('#health');
+    const authLink  = $('#authLink');
+
+    // Health check
+    fetch('/api/health').then(r => r.ok ? r.json() : Promise.reject()).then(() => {
+      healthEl.textContent = 'OK';
+    }).catch(() => healthEl.textContent = 'Not reachable');
+
+    // Update auth link label if logged in
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/me', { credentials:'include' });
+        if (res.ok) {
+          const me = await res.json();
+          if (me?.email) authLink.textContent = 'Account';
+        }
+      } catch {}
+    })();
+
+    // Chart
+    let line;
+    function renderChart(symbol, series) {
+      chartTitle.textContent = symbol ? `${symbol} Close` : 'Select a symbol to load chart';
+
+      const labels = series.map(p => p.t);
+      const data   = series.map(p => p.close);
+
+      if (line) line.destroy();
+      line = new Chart(chartEl.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: `${symbol} Close`,
+            data,
+            borderWidth: 2,
+            fill: false,
+            tension: .25
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#aab0c0', maxRotation: 0, autoSkip: true } },
+            y: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#aab0c0' } }
+          },
+          plugins: {
+            legend: { labels: { color: '#e7e9f0' } }
+          }
+        }
+      });
+    }
+
+    // Search handlers
+    async function doSearch(q) {
+      resultsEl.innerHTML = '';
+      if (!q) return;
+      const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(q)}`);
+      const items = res.ok ? await res.json() : [];
+      if (!items.length) {
+        resultsEl.innerHTML = '<div class="subtle">No matches.</div>';
+        return;
+      }
+      for (const it of items.slice(0, 10)) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'result';
+        row.innerHTML = `
+          <div class="left">
+            <div class="symbol">${it.symbol}</div>
+            <div class="subtle">${it.name || ''}</div>
+          </div>
+          <div class="subtle">${it.region || ''}</div>
+        `;
+        row.addEventListener('click', () => loadDaily(it.symbol));
+        resultsEl.appendChild(row);
+      }
+    }
+
+    async function loadDaily(symbol) {
+      chartTitle.textContent = `Loading ${symbol}…`;
+      const res = await fetch(`/api/stocks/daily?symbol=${encodeURIComponent(symbol)}`);
+      const data = res.ok ? await res.json() : null;
+      if (!data || !data.series?.length) {
+        chartTitle.textContent = `No data for ${symbol}`;
+        if (line) line.destroy();
+        return;
+      }
+      renderChart(symbol, data.series.reverse()); // oldest -> newest
+    }
+
+    $('#searchForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      doSearch(queryEl.value.trim());
+    });
+  </script>
+</body>
+</html>

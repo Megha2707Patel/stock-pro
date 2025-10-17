@@ -1,0 +1,13 @@
+# Ignore dependencies
+node_modules/
+
+# Ignore environment variables
+.env
+
+# Vercel local folder
+.vercel
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

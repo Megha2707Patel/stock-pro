@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>StockPro · Login / Sign up</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <!-- NAV -->
+  <header class="nav">
+    <div class="bar">
+      <a class="brand" href="./index.html">StockPro</a>
+      <nav class="nav-links">
+        <a href="./index.html">Home</a>
+        <a href="./ai.html">AI</a>
+        <a href="./auth.html" aria-current="page">Login / Sign up</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div class="auth-grid">
+      <!-- Sign up -->
+      <section class="card auth-card">
+        <div class="section">
+          <div class="title">Sign up</div>
+          <div class="field">
+            <label class="subtle">Name</label>
+            <input id="rname" class="input" placeholder="Your name" />
+          </div>
+          <div class="field">
+            <label class="subtle">Email</label>
+            <input id="remail" class="input" placeholder="you@example.com" />
+          </div>
+          <div class="field">
+            <label class="subtle">Password</label>
+            <input id="rpass" class="input" type="password" placeholder="At least 6 chars" />
+          </div>
+          <div class="field mt-16">
+            <button id="register" class="btn">Create account</button>
+          </div>
+          <div id="rmsg" class="note"></div>
+        </div>
+      </section>
+
+      <!-- Log in -->
+      <section class="card auth-card">
+        <div class="section">
+          <div class="title">Log in</div>
+          <div class="field">
+            <label class="subtle">Email</label>
+            <input id="lemail" class="input" placeholder="you@example.com" />
+          </div>
+          <div class="field">
+            <label class="subtle">Password</label>
+            <input id="lpass" class="input" type="password" placeholder="Your password" />
+          </div>
+          <div class="field mt-16" style="display:flex;gap:10px;flex-wrap:wrap">
+            <button id="login" class="btn">Continue</button>
+            <button id="logout" class="btn" style="background:#2b3150;border:1px solid #2b3150">Logout</button>
+            <button id="whoami" class="btn" style="background:#2b3150;border:1px solid #2b3150">Who am I?</button>
+          </div>
+          <div id="lmsg" class="note"></div>
+          <div id="who" class="note mt-16">Not logged in</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const who = $('who'), rmsg = $('rmsg'), lmsg = $('lmsg');
+
+    async function refreshMe() {
+      try {
+        const res = await fetch('/api/auth/me', { credentials:'include' });
+        if (!res.ok) { who.textContent = 'Not logged in'; return; }
+        const me = await res.json();
+        who.textContent = me?.email ? `Logged in as ${me.email}` : 'Not logged in';
+      } catch { who.textContent = 'Not logged in'; }
+    }
+
+    async function register() {
+      rmsg.textContent = '';
+      const name = $('rname').value.trim();
+      const email = $('remail').value.trim();
+      const password = $('rpass').value;
+      if (!name || !email || !password) { rmsg.innerHTML = '<span class="err">Fill all fields.</span>'; return; }
+      try {
+        const res = await fetch('/api/auth/register', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          credentials:'include',
+          body: JSON.stringify({ name, email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) { rmsg.innerHTML = `<span class="err">${data?.error || 'Failed'}</span>`; return; }
+        rmsg.innerHTML = '<span class="ok">Account created. You can log in now.</span>';
+      } catch (e) {
+        rmsg.innerHTML = `<span class="err">${e?.message || e}</span>`;
+      }
+    }
+
+    async function login() {
+      lmsg.textContent = '';
+      const email = $('lemail').value.trim();
+      const password = $('lpass').value;
+      if (!email || !password) { lmsg.innerHTML = '<span class="err">Enter email & password.</span>'; return; }
+      try {
+        const res = await fetch('/api/auth/login', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          credentials:'include',
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) { lmsg.innerHTML = `<span class="err">${data?.error || 'Login failed'}</span>`; return; }
+        lmsg.innerHTML = '<span class="ok">Logged in.</span>';
+        refreshMe();
+      } catch (e) {
+        lmsg.innerHTML = `<span class="err">${e?.message || e}</span>`;
+      }
+    }
+
+    async function logout() {
+      lmsg.textContent = '';
+      try {
+        await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
+        lmsg.innerHTML = '<span class="ok">Logged out.</span>';
+        refreshMe();
+      } catch (e) {
+        lmsg.innerHTML = `<span class="err">${e?.message || e}</span>`;
+      }
+    }
+
+    async function whoAmI() {
+      lmsg.textContent = '';
+      try {
+        const res = await fetch('/api/auth/me', { credentials:'include' });
+        const data = await res.json();
+        if (!res.ok) { lmsg.innerHTML = `<span class="err">${data?.error || 'Not logged in'}</span>`; return; }
+        lmsg.innerHTML = `<span class="ok">${JSON.stringify(data)}</span>`;
+      } catch (e) {
+        lmsg.innerHTML = `<span class="err">${e?.message || e}</span>`;
+      }
+    }
+
+    $('register').addEventListener('click', register);
+    $('login').addEventListener('click', login);
+    $('logout').addEventListener('click', logout);
+    $('whoami').addEventListener('click', whoAmI);
+    refreshMe();
+  </script>
+</body>
+</html>

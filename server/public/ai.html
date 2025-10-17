@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>StockPro · AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <header class="nav">
+    <div class="bar">
+      <a class="brand" href="./index.html">StockPro</a>
+      <nav class="nav-links">
+        <a href="./index.html">Home</a>
+        <a href="./ai.html" aria-current="page">AI</a>
+        <a href="./auth.html">Login / Sign up</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="shell">
+    <section class="card">
+      <div class="section">
+        <!-- FORM updated: IDs match public/ai.js -->
+        <form id="ai-form" class="form-row" autocomplete="off">
+          <input 
+            id="ai-question" 
+            class="input" 
+            placeholder="Ask anything about a stock (e.g., Key risks for AAPL?)" />
+          <button id="ai-submit" class="btn" type="submit">Ask</button>
+        </form>
+      </div>
+
+      <div class="section">
+        <!-- ANSWER area -->
+        <div id="ai-output" class="note" style="white-space:pre-wrap; color:#e7e9f0">
+          Ask anything about a stock.
+        </div>
+      </div>
+    </section>
+
+    <!-- API Health Status -->
+    <div class="debug mt-16">API: <span id="health">…</span></div>
+  </main>
+
+  <!-- HEALTH CHECK SCRIPT -->
+  <script>
+    const health = document.getElementById('health');
+    fetch('/api/health')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(() => health.textContent = 'OK')
+      .catch(() => health.textContent = 'Not reachable');
+  </script>
+
+  <!-- ✅ Attach AI logic -->
+  <script src="./ai.js" defer></script>
+
+</body>
+</html>
